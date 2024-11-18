@@ -74,13 +74,6 @@ def test(data,
     iouv = torch.linspace(0.5, 0.95, 10).to(device)  # iou vector for mAP@0.5:0.95
     niou = iouv.numel()
 
-    # Logging
-    log_imgs, wandb = min(log_imgs, 100), None  # ceil
-    try:
-        import wandb  # Weights & Biases
-    except ImportError:
-        log_imgs = 0
-
     # Dataloader
     if not training:
         img = torch.zeros((1, 3, imgsz, imgsz), device=device)  # init img
@@ -142,16 +135,6 @@ def test(data,
                     line = (cls, *xywh, conf) if save_conf else (cls, *xywh)  # label format
                     with open(save_dir / 'labels' / (path.stem + '.txt'), 'a') as f:
                         f.write(('%g ' * len(line)).rstrip() % line + '\n')
-
-            # W&B logging
-            if plots and len(wandb_images) < log_imgs:
-                box_data = [{"position": {"minX": xyxy[0], "minY": xyxy[1], "maxX": xyxy[2], "maxY": xyxy[3]},
-                             "class_id": int(cls),
-                             "box_caption": "%s %.3f" % (names[cls], conf),
-                             "scores": {"class_score": conf},
-                             "domain": "pixel"} for *xyxy, conf, cls in pred.tolist()]
-                boxes = {"predictions": {"box_data": box_data, "class_labels": names}}
-                wandb_images.append(wandb.Image(img[si], boxes=boxes, caption=path.name))
 
             # Clip boxes to image bounds
             clip_coords(pred, (height, width))
@@ -220,10 +203,6 @@ def test(data,
     else:
         nt = torch.zeros(1)
 
-    # W&B logging
-    if plots and wandb:
-        wandb.log({"Images": wandb_images})
-        wandb.log({"Validation": [wandb.Image(str(x), caption=x.name) for x in sorted(save_dir.glob('test*.jpg'))]})
 
     # Print results
     pf = '%20s' + '%12.3g' * 6  # print format
